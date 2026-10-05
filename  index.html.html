@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ดวงดี</title>
+<style>
+:root{--bg:#120b24;--card:#1e1440;--line:#3a2a6b;--tx:#f3ecff;--mut:#a99cd0;--gold:#f5c451;--pink:#ff7eb6;--ok:#5be3a0;--bad:#ff7a7a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:"Noto Sans Thai",system-ui,sans-serif;line-height:1.5}
+#app{max-width:480px;margin:0 auto;padding:44px 16px 90px}#lg{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:12px;width:auto;margin:0;padding:6px 12px;font-size:13px;background:#2a1d58;color:var(--gold);z-index:7}
+h1{font-size:22px;margin:8px 0}h2{font-size:18px;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+.mut{color:var(--mut);font-size:13px}
+label{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
+input,select,textarea{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:#150d30;color:var(--tx);font:inherit}
+button{font:inherit;border:0;border-radius:12px;padding:12px 16px;background:var(--gold);color:#2a1a00;font-weight:600;width:100%;margin-top:12px}
+button.alt{background:transparent;border:1px solid var(--gold);color:var(--gold)}
+button:disabled{opacity:.45}
+nav{position:fixed;left:0;right:0;bottom:0;background:#1a1138;border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{margin:0;border-radius:0;background:none;color:var(--mut);font-size:12px;padding:10px 4px;font-weight:500}
+nav button.on{color:var(--gold)}
+.score{font-size:64px;font-weight:800;color:var(--gold);line-height:1}
+.up{color:var(--ok)}.down{color:var(--bad)}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.chips span{display:inline-block;background:#2a1d58;border-radius:20px;padding:4px 12px;margin:3px 4px 3px 0;font-size:13px}
+ul{padding-left:18px;margin:6px 0}
+.bar{height:8px;border-radius:8px;background:#2a1d58;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--pink),var(--gold))}
+.lock{filter:blur(5px);pointer-events:none;user-select:none}
+.msg{padding:10px 12px;border-radius:14px;margin:8px 0;max-width:88%}
+.me{background:#3a2a6b;margin-left:auto}.bot{background:#2a1d58}
+.plan{border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:8px}
+.plan.cur{border-color:var(--gold)}
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 14px);transform:translateX(-50%);background:var(--gold);color:#2a1a00;padding:10px 18px;border-radius:20px;font-weight:600;opacity:0;transition:.3s;pointer-events:none;z-index:9}
+#toast.s{opacity:1}
+#modal{position:fixed;inset:0;background:#000a;display:none;align-items:flex-end;z-index:8}
+#modal.s{display:flex}#modal>div{max-height:88%;overflow:auto;background:var(--card);width:100%;max-width:480px;margin:0 auto;border-radius:20px 20px 0 0;padding:20px;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+</style></head><body>
+<div id="toast"></div><div id="modal"><div id="mbox"></div></div>
+<button id="lg" onclick="tglLg()"></button><div id="app"></div><nav id="nav" style="display:none"></nav>
+<script>
+const PLANS={free:{n:'Standard',q:2,c:1,f:1,m:1,deep:0,pr:2,tp:3,tip:0,p:'ฟรี'},prem:{n:'Premium',q:7,c:3,f:3,m:1.5,deep:1,pr:4,tp:5,tip:0,p:'777฿/เดือน'},god:{n:'God mode',q:12,c:99,f:5,m:2,deep:1,pr:4,tp:5,tip:1,p:'999฿/เดือน'}};
+const feats=p=>[`ถามหมอดู ${p.q} คำถาม/วัน`,`เช็กดวง ${p.c>50?'ไม่จำกัด':p.c+' ครั้ง'}/วัน`,`ดวงเจาะลึกรายด้าน: ${p.deep?'ปลดล็อก':'ล็อก'}`,`ปล่อยปลาฟรี ${p.f} ตัว/วัน`,`แต้มบุญ x${p.m}`,`บทสวด: ${p.pr}`,`วัดดังขอพร: ${p.tp}`,`เคล็ดลับไหว้วัด: ${p.tip?'ปลดล็อก':'ล็อก'}`];
+const PR=[{n:'นะโมตัสสะ',o:'นะโมตัสสะ ภะคะวะโต อะระหะโต สัมมาสัมพุทธัสสะ',w:'เริ่มต้นสวดทุกครั้ง ทำให้ใจสงบ ตั้งจิตให้มั่น · สวด 3 จบ'},{n:'พุทธคุณ (อิติปิโส)',o:'อิติปิ โส ภะคะวา อะระหัง สัมมาสัมพุทโธ ...',w:'เสริมสิริมงคล คุ้มครองภัย · สวด 3, 7 หรือ 9 จบ'},{n:'ชินบัญชร',o:'ชะยาสะนากะตา พุทธา เชต๎วา มารัง สะวาหะนัง ...',w:'แคล้วคลาดปลอดภัย · สวดตอนเช้าหรือก่อนนอน'},{n:'พาหุง',o:'พาหุง สะหัสสะมะภินิมมิตะสาวุธันตัง ...',w:'ชนะอุปสรรค เสริมกำลังใจ · สวดก่อนสอบ เจรจา หรือเริ่มงานสำคัญ'}];
+const TP=[{n:'วัดไตรมิตรวิทยาราม',pv:'กรุงเทพฯ',w:'โชคลาภ การเงิน (ไหว้หลวงพ่อทองคำ)',t:'ไปช่วงเช้า ถวายดอกไม้ธูปเทียน อธิษฐานให้ชัดเจนทีละเรื่อง'},{n:'วัดระฆังโฆสิตาราม',pv:'กรุงเทพฯ',w:'การงาน บารมี เมตตา (ไหว้สมเด็จโต)',t:'ถวายสังฆทานแล้วอธิษฐาน ขอพรเรื่องงานให้ระบุเป้าหมายที่ต้องการ'},{n:'วัดพนัญเชิงวรวิหาร',pv:'พระนครศรีอยุธยา',w:'ความสำเร็จ ขอพรทั่วไป (ไหว้หลวงพ่อโต)',t:'ไหว้ 3 ครั้ง ปิดทองแล้วตั้งจิตขอความสำเร็จ'},{n:'วัดโสธรวรารามวรวิหาร',pv:'ฉะเชิงเทรา',w:'ขอพรทั่วไป สุขภาพ (ไหว้หลวงพ่อโสธร)',t:'ขอพรด้วยจิตสงบ หากสมหวังให้กลับมาแก้บนตามที่ตั้งใจ'},{n:'วัดมังกรกมลาวาส',pv:'กรุงเทพฯ (เยาวราช)',w:'โชคลาภ ค้าขาย',t:'จุดธูปตามธรรมเนียมจีน ไหว้ด้วยความเคารพและไม่เบียดบังผู้อื่น'}];
+const FISH=[{n:'ปลาบึกแม่น้ำโขง',c:5,p:29,e:'🐟'},{n:'ปลาตะเพียน',c:10,p:59,e:'🐠'},{n:'ปลานิล',c:15,p:99,e:'🐡'}];
+const COL=['แดง','เหลือง','ชมพู','เขียว','ส้ม','ฟ้า','ม่วง'];
+const DO=['ทำบุญตักบาตร','เซ็นสัญญา/ตัดสินใจเรื่องสำคัญ','เจรจาธุรกิจ','เริ่มโปรเจกต์ใหม่','พบปะผู้ใหญ่','ติดต่อคนที่คิดถึง','ออกกำลังกายเบาๆ','ลงทุนเล็กน้อย','จัดบ้าน/โต๊ะทำงาน','สวดมนต์นั่งสมาธิ'];
+const DONT=['ทะเลาะเรื่องเล็กน้อย','ใช้จ่ายฟุ่มเฟือย','ตัดสินใจตอนอารมณ์ร้อน','ให้ยืมเงิน','เดินทางไกลไม่จำเป็น','นินทาผู้อื่น'];
+const ANS={love:['ความรักกำลังคลี่คลาย ให้เวลากับการสื่อสารอย่างจริงใจ แล้วจะเห็นผลภายใน 2-3 สัปดาห์','ดาวคู่เด่นขึ้น ระวังคำพูดตอนอารมณ์ไม่ดี ใส่เสื้อสีชมพูหรือขาวช่วยเสริม','ยังมีคนที่เข้ามาแบบไม่คาดคิด เปิดใจแต่ไม่ต้องรีบตัดสินใจ'],money:['การเงินฟื้นตัวช้าๆ แต่มั่นคง เก็บออมก่อนใช้ ปลายเดือนมีโชคเล็กๆ','รายได้เสริมมีทางเข้ามา ระวังการเซ็นสัญญาโดยไม่อ่านละเอียด','ช่วงนี้เหมาะวางแผนมากกว่าลงทุนหนัก ทำบุญเสริมทรัพย์ด้วยการปล่อยปลา'],work:['งานมีผู้ใหญ่หนุน เสนอไอเดียที่เตรียมไว้ได้เลย','ช่วงนี้งานหนักแต่ผลตอบแทนดี ถ้าอดทนถึงสิ้นเดือน','ระวังเรื่องเพื่อนร่วมงานเข้าใจผิด พูดตรงแต่สุภาพ จะผ่านไปด้วยดี'],health:['พักผ่อนให้พอ โดยเฉพาะระบบทางเดินอาหารและไหล่-คอ','ดวงสุขภาพทรงตัว หมั่นดื่มน้ำและเดินยามเช้า','อย่าอดนอนติดกัน จะกระทบอารมณ์และการตัดสินใจ'],gen:['ดวงโดยรวมกำลังเปลี่ยนเฟส ทำตามสัญชาตญาณแต่ไม่ต้องรีบ','มีเกณฑ์ได้รับข่าวดีในเร็วๆ นี้ ทำบุญและรักษาศีลจะช่วยเสริม','อดทนอีกนิด อุปสรรคตอนนี้เป็นแค่บททดสอบ ผ่านแล้วจะไปได้ไกล']};
+let S={},mode='today',chat=[],bm='p';
+const load=()=>{try{S=JSON.parse(localStorage.getItem('sd')||'{}')}catch(e){S={}}S.pts??=0;S.plan??='free';S.fish??=0;S.log??=[]};
+const save=()=>{try{localStorage.setItem('sd',JSON.stringify(S))}catch(e){}};
+const key=(d=new Date())=>d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+const H=s=>{let x=7;for(const c of s)x=(x*31+c.charCodeAt(0))>>>0;return x};
+const APP='https://claude.ai/artifact/Fr7U3kjoUhLAYavrFViLyx';
+const SG=['เมษ','พฤษภ','มิถุน','กรกฎ','สิงห์','กันย์','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'];
+const ASP=[['ทับราศีเกิด',10],['เฉียงเล็กน้อย',-3],['เกื้อหนุน',12],['ปะทะ',-8],['ส่งเสริมมาก',16],['เฉียงเล็กน้อย',-3],['ตรงข้าม',-12]];
+const bd=()=>{const[y,m,d]=S.p.birth.split('-').map(Number);return{y,m,d}};
+function info(dt){const{m,d}=bd(),x=m*100+d;let ss=9;for(const[a,i]of[[120,10],[219,11],[321,0],[420,1],[521,2],[621,3],[723,4],[823,5],[923,6],[1023,7],[1122,8],[1222,9]])if(x>=a)ss=i;
+const n=(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate(),12)-Date.UTC(2000,0,1,12))/864e5,ms=Math.floor((((218.316+13.176396*n)%360)+360)%360/30),df=(ms-ss+12)%12,k=Math.min(df,12-df);return{ss,ms,k}}
+const astro=dt=>{const{k}=info(dt),b=bd();return 60+ASP[k][1]+(dt.getDay()===new Date(b.y,b.m-1,b.d).getDay()?8:0)};
+const score=(d,salt='')=>Math.max(40,Math.min(99,astro(d)+H(S.p.name+key(d)+salt)%13-6+(salt?H(salt+key(d)+S.p.birth)%9-4:0)));
+const yest=()=>{const d=new Date();d.setDate(d.getDate()-1);return d};
+const age=b=>{const d=new Date(b),n=new Date();let a=n.getFullYear()-d.getFullYear();if(n<new Date(n.getFullYear(),d.getMonth(),d.getDate()))a--;return a};
+const pick=(a,s)=>a[H(s)%a.length];
+const picks=(a,n,s)=>{const r=[],c=[...a];for(let i=0;i<n;i++){r.push(c.splice(H(s+i)%c.length,1)[0])}return r};
+function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.add('s');setTimeout(()=>e.classList.remove('s'),2200)}
+function modal(h){document.getElementById('mbox').innerHTML=h;document.getElementById('modal').classList.add('s')}
+function closeM(){document.getElementById('modal').classList.remove('s')}
+document.getElementById('modal').onclick=e=>{if(e.target.id==='modal')closeM()};
+
+function onboarding(){
+document.getElementById('nav').style.display='none';
+document.getElementById('app').innerHTML=`<div style="text-align:center;font-size:48px;margin-top:16px">🔮</div><h1 style="text-align:center">ยินดีต้อนรับสู่ ดวงดี</h1><p class="mut" style="text-align:center">กรอกข้อมูลเพื่อให้คำทำนายตรงกับดวงของคุณ</p>
+<div class="card"><label>ชื่อ-สกุล</label><input id="n" placeholder="เช่น สมหญิง ใจดี">
+<label>วัน เดือน ปีเกิด</label><input id="b" type="date" max="${key().split('-').map(x=>x.padStart(4,'0'))[0]}-12-31">
+<label>สถานะ</label><select id="s"><option>โสด</option><option>คนคุย</option><option>มีคนที่แอบชอบ</option><option>มีคู่</option><option>แต่งงานแล้ว</option><option>หย่าร้าง/หม้าย</option></select>
+<button onclick="start()">เริ่มดูดวง ✨</button></div>`}
+function start(){const n=document.getElementById('n').value.trim(),b=document.getElementById('b').value,s=document.getElementById('s').value;
+if(!n||!b){toast('กรุณากรอกชื่อและวันเกิด');return}S.p={name:n,birth:b,status:s};save();go('today')}
+
+function go(m){mode=m;const nv=document.getElementById('nav');nv.style.display='flex';
+nv.innerHTML=[['today','🌙','ดวงวันนี้'],['fish','🐟','ปล่อยปลา'],['qa','💬','หมอดู'],['bless','🪔','บูชา'],['me','👤','ฉัน']].map(([k,i,t])=>`<button class="${k===m?'on':''}" onclick="go('${k}')" style="flex:1">${i}<br>${t}</button>`).join('');
+({today:vToday,fish:vFish,qa:vQA,bless:vBless,me:vMe})[m]();scrollTo(0,0)}
+
+function vToday(){
+const t=key(),P=PLANS[S.plan],sc=score(new Date()),y=score(yest()),d=sc-y,wd=new Date(bd().y,bd().m-1,bd().d).getDay(),ai=info(new Date());
+if(S.cd!==t){S.cd=t;S.cn=0;S.rd=[]}
+if(!S.cn){S.cn=1;S.pts+=2;save();toast('เช็กดวงวันนี้ +2 แต้มบุญ')}
+const seed=S.p.name+t,SL=['ช่วงเช้า','ช่วงสาย','ช่วงบ่าย','ช่วงเย็น','ช่วงค่ำ'],topics=[['💕 ความรัก','L'],['💰 การเงิน','M'],['💼 การงาน','W']];
+document.getElementById('app').innerHTML=`<div class="row mut"><span>${S.p.name} · ${age(S.p.birth)} ปี · ${S.p.status}</span><span onclick="plans()" style="color:var(--gold)">${P.n} ▾</span></div>
+<div class="card" style="text-align:center"><div class="mut">แต้มดวงวันนี้</div><div class="score">${sc}</div>
+<div class="${d>=0?'up':'down'}" style="font-weight:600">${d>=0?'▲ ดวงขึ้น':'▼ ดวงลง'} ${Math.abs(d)} แต้ม จากเมื่อวาน</div>
+<div class="bar" style="margin-top:10px"><i style="width:${sc}%"></i></div><p class="mut" style="margin:10px 0 0">ราศีของคุณ: ${SG[ai.ss]} · จันทร์โคจรอยู่ราศี ${SG[ai.ms]} · ความสัมพันธ์: ${ASP[ai.k][0]}</p><p class="mut" style="margin:2px 0">คำนวณจากราศีเกิดเทียบตำแหน่งจันทร์วันนี้ (โดยประมาณ) และวันเกิดตรงกับวันนี้ เพื่อความบันเทิง</p><button class="alt" onclick="shareM(1)">แชร์ดวงวันนี้</button></div>
+<div class="card"><h2>🧭 คำแนะนำวันนี้</h2><div class="chips"><span>สีมงคล: ${COL[(wd+H(t))%7]}</span><span>เลขนำโชค: ${H(seed)%90+10}</span><span>ทิศดี: ${pick(['เหนือ','ใต้','ตะวันออก','ตะวันตก','อาคเนย์','พายัพ'],seed)}</span></div>
+<p style="margin:10px 0 2px"><b class="up">✓ ฤกษ์ดี ควรทำ</b></p><ul>${picks(DO,3,seed+'a').map(x=>`<li>${x}</li>`).join('')}</ul>
+<p style="margin:10px 0 2px"><b class="down">✗ ควรเลี่ยง</b></p><ul>${picks(DONT,2,seed+'b').map(x=>`<li>${x}</li>`).join('')}</ul>
+<p class="mut">ฤกษ์ดีที่สุด: ${pick(['06:09','09:19','10:39','13:09','15:29'],seed)} น.</p></div>
+<div class="card"><h2>⏰ ดวงรายช่วงเวลา</h2><p class="mut">เช็กดวงวันนี้แล้ว ${S.cn}/${P.c>50?'ไม่จำกัด':P.c} ครั้ง</p>${SL.map((n,i)=>S.rd.includes(i)?`<div style="margin:8px 0"><div class="row"><span>${n}</span><b>${score(new Date(),'s'+i)}</b></div><div class="mut">เหมาะกับ: ${pick(DO,seed+'s'+i)}</div></div>`:`<button class="alt" onclick="slot(${i})">🔒 ดู${n}</button>`).join('')}</div>
+<div class="card"><h2>🔍 ดวงเจาะลึกรายด้าน</h2><div class="${P.deep?'':'lock'}">${topics.map(([n,k])=>`<div style="margin:8px 0"><div class="row"><span>${n}</span><b>${score(new Date(),k)}</b></div><div class="bar"><i style="width:${score(new Date(),k)}%"></i></div></div>`).join('')}</div>
+${P.deep?'':`<p class="mut">ดวงเจาะลึกรายด้านสำหรับ Premium ขึ้นไป</p><button onclick="plans()">อัปเกรดแพ็กเกจ</button>`}</div>`}
+function slot(i){const P=PLANS[S.plan];if(S.cn>=P.c){plans('เช็กดวงครบโควตาวันนี้แล้ว');return}S.cn++;S.rd.push(i);save();vToday()}
+
+function vFish(){const t=key(),P=PLANS[S.plan];if(S.fd!==t){S.fd=t;S.fc=0}const left=P.f-S.fc,g1=Math.round(P.m);
+document.getElementById('app').innerHTML=`<div class="row mut"><h1 style="margin:0">🙏 Pray and Pay</h1><span onclick="plans()" style="color:var(--gold)">${P.n} ▾</span></div><div class="card" style="margin-top:12px"><div class="row"><div><div class="mut">แต้มบุญของคุณ</div><div class="score" style="font-size:40px">${S.pts}</div></div><div style="text-align:right"><div class="mut">ปล่อยปลาแล้ว</div><div style="font-size:28px;font-weight:700">${S.fish} ตัว</div></div></div></div>
+<div class="card"><h2>🎁 ปล่อยปลาฟรีวันนี้</h2><p class="mut">ฟรี ${P.f} ตัว/วัน (เหลือ ${Math.max(left,0)}) · รับ +${g1} แต้มบุญ/ตัว</p><button ${left>0?'':'class="alt"'} onclick="rel(0,1)">${left>0?'ปล่อยปลาฟรี 🐟':'ครบโควตาวันนี้ · อัปเกรดเพื่อปล่อยเพิ่ม'}</button></div>
+<div class="card"><h2>แพ็กเกจปลา</h2><p class="mut">เลือกชนิดปลาตามแต้มบุญที่ต้องการได้รับ แพ็กเกจ ${P.n} ได้แต้ม x${P.m} (เดโม ยังไม่มีการชำระเงินจริง)</p>${FISH.map((f,i)=>`<div class="plan"><div class="row"><span style="font-size:15px">${f.e} ${f.n}</span><b style="color:var(--gold)">+${Math.round(f.c*P.m)} แต้มบุญ/ตัว</b></div><button class="alt" onclick="rel(${i},0)">ปล่อย ${f.p}฿</button></div>`).join('')}</div>`}
+function rel(i,free){const f=FISH[i],P=PLANS[S.plan];if(free){if(S.fc>=P.f){plans('ปล่อยปลาฟรีครบโควตาวันนี้แล้ว');return}S.fc++}const g=Math.round((free?1:f.c)*P.m);S.pts+=g;S.fish++;save();toast(`${f.e} ปล่อย${f.n}แล้ว +${g} แต้มบุญ 🙏`);vFish()}
+
+function vBless(){const P=PLANS[S.plan],t=key(),g=Math.round(P.m);if(S.pd!==t){S.pd=t;S.ps=[]}
+const tab=`<div class="row"><button class="${bm=='p'?'':'alt'}" onclick="bm='p';vBless()">บทสวด</button><button class="${bm=='t'?'':'alt'}" onclick="bm='t';vBless()">วัดดังขอพร</button></div>`;
+const lk=`<div class="card"><p class="mut">🔒 สำหรับ Premium ขึ้นไป</p><button class="alt" onclick="plans()">อัปเกรดแพ็กเกจ</button></div>`;
+const body=bm=='p'?PR.map((x,i)=>i>=P.pr?lk:`<div class="card"><h2>${x.n}</h2><p class="mut">บทนำ:</p><p style="margin:2px 0">${x.o}</p><p class="mut">(แสดงเฉพาะบทนำ ดูบทเต็มได้จากหนังสือสวดมนต์)</p><p class="mut">โอกาสสวด: ${x.w}</p>${S.ps.includes(i)?'<button disabled>สวดแล้ววันนี้ ✓</button>':`<button onclick="chant(${i})">สวดแล้ว +${g} แต้มบุญ</button>`}</div>`).join(''):TP.map((x,i)=>i>=P.tp?lk:`<div class="card"><h2>${x.n}</h2><p class="mut">${x.pv}</p><p>ขอพรเรื่อง: ${x.w}</p>${P.tip?`<p class="mut">เคล็ดลับไหว้วัด: ${x.t}</p>`:'<p class="mut">🔒 เคล็ดลับไหว้วัด: God mode</p>'}</div>`).join('');
+document.getElementById('app').innerHTML=`<div class="row mut"><h1 style="margin:0">🪔 บูชา</h1><span onclick="plans()" style="color:var(--gold)">${P.n} ▾</span></div><div style="margin-top:12px">${tab}</div>${body}<p class="mut">ข้อมูลเพื่อความเชื่อและกำลังใจ ควรตรวจสอบรายละเอียดกับวัดก่อนเดินทาง</p>`}
+
+function shareM(w){const L=S.lg==='en',t=key(),sc=score(new Date()),d=sc-score(yest()),wd=new Date(bd().y,bd().m-1,bd().d).getDay(),col=COL[(wd+H(t))%7],num=H(S.p.name+t)%90+10;
+const tx=w?(L?`🔮 My luck today: ${sc}/100 (${d>=0?'up':'down'} ${Math.abs(d)}) · Lucky color: ${E(col)} · Lucky number: ${num}\nCheck yours: ${APP}`:`🔮 ดวงวันนี้ของฉัน ${sc}/100 (${d>=0?'ดวงขึ้น':'ดวงลง'} ${Math.abs(d)}) · สีมงคล ${col} · เลขนำโชค ${num}\nมาเช็กดวงของคุณ: ${APP}`):(L?`🔮 Check your daily luck, release fish, chant and ask the oracle!\nTry it: ${APP}`:`🔮 มาเช็กดวงรายวัน ปล่อยปลา สวดมนต์ และถามหมอดูด้วยกัน\nลองเลย: ${APP}`);
+modal(`<h2>แชร์ดวงของคุณ</h2><textarea id="st" rows="6" readonly>${tx}</textarea><button onclick="doShare()">แชร์ / คัดลอก</button><button class="alt" onclick="closeM()">ปิด</button>`)}
+async function doShare(){const t=document.getElementById('st'),v=t.value;try{if(navigator.share){await navigator.share({text:v});return}}catch(e){if(e&&e.name==='AbortError')return}try{await navigator.clipboard.writeText(v);toast('คัดลอกแล้ว')}catch(e){t.select();toast('กดค้างที่ข้อความเพื่อคัดลอก')}}
+function chant(i){const g=Math.round(PLANS[S.plan].m);S.ps.push(i);S.pts+=g;save();toast(`สวดแล้ว +${g} แต้มบุญ 🙏`);vBless()}
+function vQA(){const p=PLANS[S.plan],t=key();if(S.qd!==t){S.qd=t;S.qu=0;save()}const left=p.q-S.qu;
+document.getElementById('app').innerHTML=`<h1>💬 ถามหมอดู</h1><div class="row mut"><span>แพ็กเกจ ${p.n}</span><span>เหลือ ${left}/${p.q} คำถามวันนี้</span></div>
+<div id="chat" style="min-height:120px">${chat.length?chat.map(m=>`<div class="msg ${m.me?'me':'bot'}">${m.t}</div>`).join(''):'<p class="mut">ลองถามเรื่องความรัก การเงิน งาน หรือสุขภาพ เช่น "ปีนี้จะมีแฟนไหม"</p>'}</div>
+<textarea id="q" rows="2" placeholder="พิมพ์คำถามของคุณ..."></textarea><button onclick="ask()" ${left<=0?'disabled':''}>${left>0?'ถามเลย':'โควตาวันนี้หมดแล้ว'}</button>
+<button class="alt" onclick="plans()">ดูแพ็กเกจ</button>`}
+function ask(){const q=document.getElementById('q').value.trim();if(!q)return;
+const k=/รัก|แฟน|คู่|แต่ง|เลิก/.test(q)?'love':/เงิน|รวย|ลงทุน|หนี้|โชค|ขาย/.test(q)?'money':/งาน|เลื่อน|ธุรกิจ|เรียน|สอบ|ลาออก/.test(q)?'work':/ป่วย|สุขภาพ|เจ็บ|หมอ/.test(q)?'health':'gen';
+S.qu++;save();chat.push({me:1,t:q.replace(/</g,'&lt;')},{t:'🔮 '+pick(ANS[k],S.p.name+q+key())});vQA()}
+function plans(msg){modal(`<h2>เลือกแพ็กเกจ</h2>${msg?`<p class="mut">${msg}</p>`:''}${Object.entries(PLANS).map(([k,p])=>`<div class="plan ${S.plan===k?'cur':''}"><div class="row"><b>${p.n}</b><span>${p.p}</span></div><ul class="mut">${feats(p).map(x=>`<li>${x}</li>`).join('')}</ul>${S.plan===k?'<div class="mut">แพ็กเกจปัจจุบัน</div>':`<button class="alt" onclick="setPlan('${k}')">เลือก</button>`}</div>`).join('')}<p class="mut">เดโม ยังไม่มีการชำระเงินจริง</p>`)}
+function setPlan(k){S.plan=k;save();closeM();go(mode);toast('เปลี่ยนเป็น '+PLANS[k].n+' (เดโม)')}
+
+function vMe(){document.getElementById('app').innerHTML=`<h1>👤 โปรไฟล์</h1><div class="card"><p><b>${S.p.name}</b></p><p class="mut">เกิด ${S.p.birth} · อายุ ${age(S.p.birth)} ปี · ${S.p.status}</p><p class="mut">แต้มบุญ ${S.pts} · ปล่อยปลา ${S.fish} ตัว · แพ็กเกจ ${PLANS[S.plan].n}</p><button onclick="plans()">เปลี่ยนแพ็กเกจ</button><button class="alt" onclick="shareM(0)">ชวนเพื่อนมาเช็กดวง</button><button class="alt" onclick="if(confirm(E('ล้างข้อมูลทั้งหมด?'))){S={};try{localStorage.removeItem('sd')}catch(e){}load();chat=[];onboarding()}">ล้างข้อมูล/กรอกใหม่</button></div>`}
+
+const D={};`ดวงดี=Duang Dee
+ราศีของคุณ:=Your sign:
+จันทร์โคจรอยู่ราศี~=Moon in~
+ความสัมพันธ์:=Aspect:
+คำนวณจากราศีเกิดเทียบตำแหน่งจันทร์วันนี้ (โดยประมาณ) และวันเกิดตรงกับวันนี้ เพื่อความบันเทิง=Based on your birth sign vs today's (approximate) Moon position, plus a bonus on your birth weekday. For entertainment.
+เมษ=Aries
+พฤษภ=Taurus
+มิถุน=Gemini
+กรกฎ=Cancer
+สิงห์=Leo
+กันย์=Virgo
+ตุลย์=Libra
+พิจิก=Scorpio
+ธนู=Sagittarius
+มังกร=Capricorn
+กุมภ์=Aquarius
+มีน=Pisces
+ทับราศีเกิด=Same sign
+เฉียงเล็กน้อย=Minor tension
+เกื้อหนุน=Supportive
+ปะทะ=Challenging
+ส่งเสริมมาก=Very harmonious
+ตรงข้าม=Opposing
+แชร์ดวงวันนี้=Share today's reading
+ชวนเพื่อนมาเช็กดวง=Invite friends
+แชร์ดวงของคุณ=Share your reading
+แชร์ / คัดลอก=Share / Copy
+ปิด=Close
+คัดลอกแล้ว=Copied
+กดค้างที่ข้อความเพื่อคัดลอก=Press and hold the text to copy
+/เดือน=/month
+เลือก=Choose
+ยินดีต้อนรับสู่ ดวงดี=Welcome to Duang Dee
+กรอกข้อมูลเพื่อให้คำทำนายตรงกับดวงของคุณ=Enter your details for a personalized reading
+ชื่อ-สกุล=Full name
+เช่น สมหญิง ใจดี=e.g. Jane Smith
+วัน เดือน ปีเกิด=Date of birth
+สถานะ=Status
+โสด=Single
+คนคุย=Talking to someone
+มีคนที่แอบชอบ=Have a crush
+มีคู่=In a relationship
+แต่งงานแล้ว=Married
+หย่าร้าง/หม้าย=Divorced/Widowed
+เริ่มดูดวง ✨=Start reading ✨
+กรุณากรอกชื่อและวันเกิด=Please enter your name and birth date
+~ปี~·=~yrs~·
+แต้มดวงวันนี้=Today's luck score
+ดวงขึ้น=Luck up
+ดวงลง=Luck down
+~แต้ม~จากเมื่อวาน=~pts vs yesterday
+คำแนะนำวันนี้=Today's advice
+สีมงคล:=Lucky color:
+เลขนำโชค:=Lucky number:
+ทิศดี:=Good direction:
+ฤกษ์ดี ควรทำ=Auspicious to do
+ควรเลี่ยง=Better avoid
+ฤกษ์ดีที่สุด:=Best time:
+~น.=
+ดวงรายช่วงเวลา=Luck by time of day
+เช็กดวงวันนี้แล้ว=Checks used today:
+~ครั้ง/วัน=~times/day
+~ครั้ง=~times
+ไม่จำกัด=Unlimited
+/วัน=/day
+🔒~ดู=🔒~View
+ช่วงเช้า=Morning
+ช่วงสาย=Late morning
+ช่วงบ่าย=Afternoon
+ช่วงเย็น=Evening
+ช่วงค่ำ=Night
+เหมาะกับ:=Good for:
+ดวงเจาะลึกรายด้านสำหรับ Premium ขึ้นไป=In-depth luck is for Premium and above
+ดวงเจาะลึกรายด้าน=In-depth luck
+ความรัก=Love
+การเงิน=Money
+การงาน=Career
+อัปเกรดแพ็กเกจ=Upgrade plan
+เช็กดวงวันนี้~+2~แต้มบุญ=Daily check: +2 merit
+เช็กดวงครบโควตาวันนี้แล้ว=Daily checks used up
+เช็กดวง=Luck checks
+แพ็กเกจปลา=Fish packages
+แพ็กเกจปัจจุบัน=Current plan
+เปลี่ยนแพ็กเกจ=Change plan
+เลือกแพ็กเกจ=Choose a plan
+ดูแพ็กเกจ=See plans
+แพ็กเกจ=Plan
+สีแดง=Red
+แดง=Red
+เหลือง=Yellow
+ชมพู=Pink
+เขียว=Green
+ส้ม=Orange
+ฟ้า=Blue
+ม่วง=Purple
+ตะวันออก=East
+ตะวันตก=West
+อาคเนย์=Southeast
+พายัพ=Northwest
+เหนือ=North
+ใต้=South
+ทำบุญตักบาตร=Make merit / give alms
+เซ็นสัญญา/ตัดสินใจเรื่องสำคัญ=Sign contracts / big decisions
+เจรจาธุรกิจ=Business talks
+เริ่มโปรเจกต์ใหม่=Start a new project
+พบปะผู้ใหญ่=Meet elders / seniors
+ติดต่อคนที่คิดถึง=Contact someone you miss
+ออกกำลังกายเบาๆ=Light exercise
+ลงทุนเล็กน้อย=Small investments
+จัดบ้าน/โต๊ะทำงาน=Tidy home / desk
+สวดมนต์นั่งสมาธิ=Chant and meditate
+ทะเลาะเรื่องเล็กน้อย=Petty arguments
+ใช้จ่ายฟุ่มเฟือย=Overspending
+ตัดสินใจตอนอารมณ์ร้อน=Deciding while angry
+ให้ยืมเงิน=Lending money
+เดินทางไกลไม่จำเป็น=Unnecessary long trips
+นินทาผู้อื่น=Gossiping
+แต้มบุญของคุณ=Your merit points
+ปล่อยปลาแล้ว=Fish released
+~ตัว/วัน=~fish/day
+~ตัว=~fish
+ปล่อยปลาฟรีวันนี้=Free fish release today
+ปล่อยปลาฟรีครบโควตาวันนี้แล้ว=Free fish quota used up
+ปล่อยปลาฟรี=Free fish release
+ฟรี~=Free~
+ฟรี=Free
+(เหลือ~=(left~
+)~·~รับ~+=)~·~gets~+
+~แต้มบุญ/ตัว=~merit/fish
+ครบโควตาวันนี้~·~อัปเกรดเพื่อปล่อยเพิ่ม=Quota used · upgrade for more
+เลือกชนิดปลาตามแต้มบุญที่ต้องการได้รับ=Pick a fish by the merit you want.
+ได้แต้ม~x=earns~x
+(เดโม ยังไม่มีการชำระเงินจริง)=(demo, no real payment)
+เดโม ยังไม่มีการชำระเงินจริง=Demo: no real payment
+ปล่อยปลา~=Fish released~
+ปล่อยปลา=Fish
+ปล่อย~=Release~
+ปล่อย=Released~
+แล้ว~+=~+
+ปลาบึกแม่น้ำโขง=Mekong giant catfish
+ปลาตะเพียน=Silver barb
+ปลานิล=Nile tilapia
+แต้มบุญ=merit pts
+ถามหมอดู=Ask the Oracle
+เหลือ~=Left~
+คำถามวันนี้=~questions today
+คำถาม/วัน=questions/day
+ลองถามเรื่องความรัก การเงิน งาน หรือสุขภาพ เช่น "ปีนี้จะมีแฟนไหม"=Try asking about love, money, work or health, e.g. "Will I find love this year?"
+พิมพ์คำถามของคุณ...=Type your question...
+ถามเลย=Ask
+โควตาวันนี้หมดแล้ว=Daily quota used up
+ปลดล็อก=unlocked
+ล็อก=locked
+เปลี่ยนเป็น~=Changed to~
+(เดโม)=(demo)
+โปรไฟล์=Profile
+เกิด~=Born~
+อายุ~=Age~
+ล้างข้อมูล/กรอกใหม่=Reset / re-enter
+ล้างข้อมูลทั้งหมด?=Clear all data?
+ดวงวันนี้=Today
+หมอดู=Oracle
+บูชา=Blessings
+ฉัน=Me
+บทสวด=Prayers
+วัดดังขอพร=Famous temples
+เคล็ดลับไหว้วัด=Offering tips
+บทนำ:=Opening:
+(แสดงเฉพาะบทนำ ดูบทเต็มได้จากหนังสือสวดมนต์)=(Opening line only; see a chanting book for the full text)
+โอกาสสวด:=When to chant:
+สวดแล้ววันนี้~✓=Chanted today~✓
+สวดแล้ว~+=Chanted~+
+🔒~สำหรับ~Premium~ขึ้นไป=🔒~Premium~and~above
+🔒~เคล็ดลับไหว้วัด:~God~mode=🔒~Offering~tips:~God~mode
+ขอพรเรื่อง:=Wish for:
+ข้อมูลเพื่อความเชื่อและกำลังใจ ควรตรวจสอบรายละเอียดกับวัดก่อนเดินทาง=For faith and encouragement. Please confirm details with the temple before visiting.
+กรุงเทพฯ~(เยาวราช)=Bangkok~(Yaowarat)
+กรุงเทพฯ=Bangkok
+พระนครศรีอยุธยา=Ayutthaya
+ฉะเชิงเทรา=Chachoengsao
+นะโมตัสสะ=Namo Tassa
+พุทธคุณ=Buddhaguna
+ชินบัญชร=Jinabanchon
+พาหุง=Bahum
+เริ่มต้นสวดทุกครั้ง ทำให้ใจสงบ ตั้งจิตให้มั่น=Begin every session; calms and focuses the mind
+สวด~3~จบ=chant~3~times
+สวด~3,~7~หรือ~9~จบ=chant~3,~7~or~9~times
+เสริมสิริมงคล คุ้มครองภัย=Brings auspiciousness and protection
+แคล้วคลาดปลอดภัย=Safety and protection from harm
+สวดตอนเช้าหรือก่อนนอน=chant in the morning or before bed
+ชนะอุปสรรค เสริมกำลังใจ=Overcome obstacles; boosts morale
+สวดก่อนสอบ เจรจา หรือเริ่มงานสำคัญ=chant before exams, negotiations or big tasks
+วัดไตรมิตรวิทยาราม=Wat Traimit
+วัดระฆังโฆสิตาราม=Wat Rakhang
+วัดพนัญเชิงวรวิหาร=Wat Phanan Choeng
+วัดโสธรวรารามวรวิหาร=Wat Sothon
+วัดมังกรกมลาวาส=Wat Mangkon Kamalawat
+โชคลาภ การเงิน (ไหว้หลวงพ่อทองคำ)=Fortune, money (Golden Buddha)
+การงาน บารมี เมตตา (ไหว้สมเด็จโต)=Career, prestige, kindness (Somdet To)
+ความสำเร็จ ขอพรทั่วไป (ไหว้หลวงพ่อโต)=Success, general wishes (Luang Pho To)
+ขอพรทั่วไป สุขภาพ (ไหว้หลวงพ่อโสธร)=General wishes, health (Luang Pho Sothon)
+โชคลาภ ค้าขาย=Fortune, trade
+ไปช่วงเช้า ถวายดอกไม้ธูปเทียน อธิษฐานให้ชัดเจนทีละเรื่อง=Go in the morning, offer flowers, incense and candles, and make one clear wish at a time
+ถวายสังฆทานแล้วอธิษฐาน ขอพรเรื่องงานให้ระบุเป้าหมายที่ต้องการ=Offer sangha alms, then wish; state your career goal clearly
+ไหว้ 3 ครั้ง ปิดทองแล้วตั้งจิตขอความสำเร็จ=Bow 3 times, apply gold leaf, then set your intention for success
+ขอพรด้วยจิตสงบ หากสมหวังให้กลับมาแก้บนตามที่ตั้งใจ=Wish with a calm mind; if it comes true, return to fulfil your vow
+จุดธูปตามธรรมเนียมจีน ไหว้ด้วยความเคารพและไม่เบียดบังผู้อื่น=Light incense in Chinese custom; pay respects without crowding others
+ความรักกำลังคลี่คลาย ให้เวลากับการสื่อสารอย่างจริงใจ แล้วจะเห็นผลภายใน 2-3 สัปดาห์=Love is unfolding. Give time to honest communication and you'll see results in 2-3 weeks.
+ดาวคู่เด่นขึ้น ระวังคำพูดตอนอารมณ์ไม่ดี ใส่เสื้อสีชมพูหรือขาวช่วยเสริม=Your love stars are rising. Watch your words when moody; pink or white clothes help.
+ยังมีคนที่เข้ามาแบบไม่คาดคิด เปิดใจแต่ไม่ต้องรีบตัดสินใจ=Someone may appear unexpectedly. Stay open but don't rush to decide.
+การเงินฟื้นตัวช้าๆ แต่มั่นคง เก็บออมก่อนใช้ ปลายเดือนมีโชคเล็กๆ=Finances recover slowly but steadily. Save before spending; small luck near month-end.
+รายได้เสริมมีทางเข้ามา ระวังการเซ็นสัญญาโดยไม่อ่านละเอียด=Side income may come. Beware of signing contracts without reading them.
+ช่วงนี้เหมาะวางแผนมากกว่าลงทุนหนัก ทำบุญเสริมทรัพย์ด้วยการปล่อยปลา=Better for planning than heavy investing now. Release fish to boost wealth merit.
+งานมีผู้ใหญ่หนุน เสนอไอเดียที่เตรียมไว้ได้เลย=You have support from seniors at work. Go ahead and pitch your prepared idea.
+ช่วงนี้งานหนักแต่ผลตอบแทนดี ถ้าอดทนถึงสิ้นเดือน=Work is heavy but pays off if you hold on until month-end.
+ระวังเรื่องเพื่อนร่วมงานเข้าใจผิด พูดตรงแต่สุภาพ จะผ่านไปด้วยดี=Beware of misunderstandings with colleagues. Speak directly but politely.
+พักผ่อนให้พอ โดยเฉพาะระบบทางเดินอาหารและไหล่-คอ=Get enough rest, especially for digestion and shoulders/neck.
+ดวงสุขภาพทรงตัว หมั่นดื่มน้ำและเดินยามเช้า=Health is stable. Drink water and take a morning walk.
+อย่าอดนอนติดกัน จะกระทบอารมณ์และการตัดสินใจ=Don't stay up late repeatedly; it affects mood and decisions.
+ดวงโดยรวมกำลังเปลี่ยนเฟส ทำตามสัญชาตญาณแต่ไม่ต้องรีบ=Your overall luck is changing phase. Follow your instincts without rushing.
+มีเกณฑ์ได้รับข่าวดีในเร็วๆ นี้ ทำบุญและรักษาศีลจะช่วยเสริม=Good news may arrive soon. Making merit and keeping precepts will help.
+อดทนอีกนิด อุปสรรคตอนนี้เป็นแค่บททดสอบ ผ่านแล้วจะไปได้ไกล=Hang in there a little longer. Current obstacles are just a test; you'll go far after.`.split("\n").forEach(p=>{const i=p.indexOf("=");if(i>0)D[p.slice(0,i).replace(/~/g," ")]=p.slice(i+1).replace(/~/g," ")});
+const KS=Object.keys(D).sort((a,b)=>b.length-a.length),TH=/[\u0E00-\u0E7F]/;
+const E=s=>S.lg==='en'?(D[s]||s):s;
+function tx(v){KS.forEach(k=>{if(v.includes(k))v=v.split(k).join(D[k])});return v}
+function xl(){if(S.lg!=='en')return;const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode()){if(TH.test(n.nodeValue)&&!(n.parentElement&&n.parentElement.closest('.me'))){const v=tx(n.nodeValue);if(v!==n.nodeValue)n.nodeValue=v}}document.querySelectorAll('[placeholder]').forEach(e=>{if(TH.test(e.placeholder))e.placeholder=tx(e.placeholder)})}
+const OB={childList:true,subtree:true,characterData:true},ob=new MutationObserver(()=>{ob.disconnect();xl();ob.observe(document.body,OB)});
+function setLg(){document.documentElement.lang=S.lg==='en'?'en':'th';document.getElementById('lg').textContent=S.lg==='en'?'ไทย':'EN'}
+function tglLg(){S.lg=S.lg==='en'?'th':'en';save();setLg();S.p?go(mode):onboarding()}
+
+load();setLg();ob.observe(document.body,OB);S.p?go('today'):onboarding();
+</script></body></html>
